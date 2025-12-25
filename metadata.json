@@ -1,0 +1,7 @@
+{
+  "name": "BEAM P2P - Secure Hub",
+  "description": "Serverless, decentralized peer-to-peer encrypted messaging using WebRTC. Direct device-to-device tunnels with zero server footprint.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
