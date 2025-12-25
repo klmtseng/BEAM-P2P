@@ -46,7 +46,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ messages, onSendMessage, remoteId, 
 
   return (
     <div className="flex-1 flex flex-col h-[calc(100vh-140px)]">
-      <div className={`px-4 py-3 bg-slate-900/50 rounded-[2rem] flex items-center justify-between border ${mode === 'direct' ? 'border-emerald-500/20' : 'border-indigo-500/20'} mb-4`}>
+      <div className={`px-4 py-3 bg-slate-900/50 rounded-[2rem] flex items-center justify-between border ${mode === 'direct' ? 'border-emerald-500/20' : 'border-indigo-500/20'} mb-4 shadow-lg shadow-black/20`}>
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 rounded-2xl ${mode === 'direct' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-indigo-500/20 text-indigo-400'} flex items-center justify-center border border-current/20`}>
             {mode === 'direct' ? <Lock size={20} /> : <Users size={20} />}
@@ -58,30 +58,30 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ messages, onSendMessage, remoteId, 
         </div>
         <div className="flex items-center gap-1 px-3 py-1 bg-black/30 rounded-full border border-white/5">
           <ShieldCheck size={10} className="text-emerald-500" />
-          <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">E2EE Active</span>
+          <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">Encrypted</span>
         </div>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-6 pr-2 custom-scrollbar pb-6">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-6 pr-2 custom-scrollbar pb-6 scroll-smooth">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-slate-800 gap-2 opacity-30">
             <Zap size={48} />
-            <p className="text-[10px] font-black uppercase tracking-[0.3em]">Channel Open</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em]">Channel Established</p>
           </div>
         ) : messages.map((msg) => (
-          <div key={msg.id} className={`flex flex-col ${msg.senderName === 'Me' ? 'items-end' : 'items-start'}`}>
+          <div key={msg.id} className={`flex flex-col ${msg.senderName === 'Me' ? 'items-end' : 'items-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
              <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 px-2">{msg.senderName}</span>
-             <div className={`max-w-[85%] rounded-2xl p-4 text-sm ${msg.senderName === 'Me' ? (mode === 'direct' ? 'bg-emerald-600' : 'bg-indigo-600') : 'bg-slate-800'}`}>
-                {msg.type === 'text' && msg.content}
-                {msg.type === 'image' && <img src={msg.content} alt="Shared" className="rounded-xl max-h-64" />}
+             <div className={`max-w-[85%] rounded-2xl p-4 text-sm ${msg.senderName === 'Me' ? (mode === 'direct' ? 'bg-emerald-600' : 'bg-indigo-600') : 'bg-slate-800'} shadow-md`}>
+                {msg.type === 'text' && <p className="leading-relaxed break-words">{msg.content}</p>}
+                {msg.type === 'image' && <img src={msg.content} alt="Shared" className="rounded-xl max-h-64 object-cover" />}
                 {msg.type === 'file' && (
                   <div className="flex items-center gap-3">
-                    <FileIcon size={20} />
+                    <div className="bg-black/20 p-2 rounded-lg"><FileIcon size={20} /></div>
                     <div className="flex-1 min-w-0">
-                      <p className="truncate font-bold">{msg.fileName}</p>
-                      <p className="text-[10px] opacity-50">{msg.fileSize}</p>
+                      <p className="truncate font-bold text-xs">{msg.fileName}</p>
+                      <p className="text-[9px] opacity-60 uppercase font-black">{msg.fileSize}</p>
                     </div>
-                    <a href={msg.content} download={msg.fileName} className="p-2 bg-white/10 rounded-lg"><Download size={16} /></a>
+                    <a href={msg.content} download={msg.fileName} className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"><Download size={16} /></a>
                   </div>
                 )}
              </div>
@@ -90,28 +90,26 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ messages, onSendMessage, remoteId, 
       </div>
 
       <div className="pt-4 space-y-3">
-        <div className="flex gap-2">
-          <button 
-            onClick={() => fileInputRef.current?.click()} 
-            disabled={isProcessingFile}
-            className="w-full flex items-center justify-center gap-2 py-3 bg-slate-900 text-slate-400 rounded-2xl border border-slate-800 text-[10px] font-black uppercase tracking-widest hover:text-indigo-400 disabled:opacity-50 transition-all active:scale-95"
-          >
-            <Paperclip size={14} /> {isProcessingFile ? 'Processing...' : 'Attach Resource'}
-          </button>
-        </div>
+        <button 
+          onClick={() => fileInputRef.current?.click()} 
+          disabled={isProcessingFile}
+          className="w-full flex items-center justify-center gap-2 py-3.5 bg-slate-900 text-slate-400 rounded-2xl border border-slate-800 text-[10px] font-black uppercase tracking-[0.2em] hover:text-indigo-400 disabled:opacity-50 transition-all active:scale-95 shadow-lg shadow-black/40"
+        >
+          <Paperclip size={14} /> {isProcessingFile ? 'Packaging Resource...' : 'Send Media / File'}
+        </button>
         <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
         <form onSubmit={handleSubmit} className="relative">
           <input 
             type="text" 
             value={input} 
             onChange={(e) => setInput(e.target.value)} 
-            placeholder="Secure message..." 
-            className="w-full bg-slate-900 border-2 border-slate-800 rounded-3xl pl-5 pr-16 py-4 text-sm text-slate-100 focus:outline-none focus:border-indigo-500/50 transition-all" 
+            placeholder="Write secure data..." 
+            className="w-full bg-slate-900 border-2 border-slate-800 rounded-3xl pl-5 pr-16 py-4 text-sm text-slate-100 focus:outline-none focus:border-indigo-500/50 transition-all shadow-xl shadow-black/40 placeholder:text-slate-700" 
           />
           <button 
             type="submit" 
             disabled={!input.trim()} 
-            className={`absolute right-2 top-2 bottom-2 aspect-square flex items-center justify-center ${mode === 'direct' ? 'bg-emerald-600' : 'bg-indigo-600'} text-white rounded-2xl active:scale-95 disabled:opacity-20 transition-all`}
+            className={`absolute right-2 top-2 bottom-2 aspect-square flex items-center justify-center ${mode === 'direct' ? 'bg-emerald-600 shadow-emerald-600/20' : 'bg-indigo-600 shadow-indigo-600/20'} text-white rounded-2xl active:scale-95 disabled:opacity-10 transition-all shadow-lg`}
           >
             <Send size={18} />
           </button>
