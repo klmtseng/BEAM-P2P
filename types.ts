@@ -1,5 +1,5 @@
 
-export type MessageType = 'text' | 'image' | 'file' | 'system' | 'ai';
+export type MessageType = 'text' | 'image' | 'file' | 'system';
 export type BeamMode = 'direct' | 'group';
 
 export interface Message {
