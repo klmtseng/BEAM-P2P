@@ -1,8 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Message, MessageType, BeamMode } from '../types';
-import { Send, Sparkles, Zap, Loader2, Paperclip, Download, File as FileIcon, Users, Lock, ShieldCheck } from 'lucide-react';
-import { GoogleGenAI } from '@google/genai';
+import { Send, Zap, Paperclip, Download, File as FileIcon, Users, Lock, ShieldCheck } from 'lucide-react';
 
 interface ChatRoomProps {
   messages: Message[];
@@ -14,16 +13,20 @@ interface ChatRoomProps {
 
 const ChatRoom: React.FC<ChatRoomProps> = ({ messages, onSendMessage, remoteId, participantCount = 1, mode }) => {
   const [input, setInput] = useState('');
-  const [isAiLoading, setIsAiLoading] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages]);
+  useEffect(() => { 
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; 
+  }, [messages]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim()) { onSendMessage(input.trim(), 'text'); setInput(''); }
+    if (input.trim()) { 
+      onSendMessage(input.trim(), 'text'); 
+      setInput(''); 
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -36,24 +39,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ messages, onSendMessage, remoteId, 
       const type: MessageType = file.type.startsWith('image/') ? 'image' : 'file';
       onSendMessage(content, type, file.name, (file.size / 1024).toFixed(1) + ' KB');
       setIsProcessingFile(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     };
     reader.readAsDataURL(file);
-  };
-
-  const generateAiReply = async () => {
-    if (!input.trim() && messages.length === 0) return;
-    setIsAiLoading(true);
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: input.trim() ? `Refine this message: ${input}` : "Generate a P2P greeting.",
-        config: { systemInstruction: "Be concise and tech-savvy." }
-      });
-      setInput(response.text || '');
-    } catch (err) {
-      console.error(err);
-    } finally { setIsAiLoading(false); }
   };
 
   return (
@@ -85,7 +73,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ messages, onSendMessage, remoteId, 
              <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 px-2">{msg.senderName}</span>
              <div className={`max-w-[85%] rounded-2xl p-4 text-sm ${msg.senderName === 'Me' ? (mode === 'direct' ? 'bg-emerald-600' : 'bg-indigo-600') : 'bg-slate-800'}`}>
                 {msg.type === 'text' && msg.content}
-                {msg.type === 'image' && <img src={msg.content} className="rounded-xl max-h-64" />}
+                {msg.type === 'image' && <img src={msg.content} alt="Shared" className="rounded-xl max-h-64" />}
                 {msg.type === 'file' && (
                   <div className="flex items-center gap-3">
                     <FileIcon size={20} />
@@ -103,17 +91,28 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ messages, onSendMessage, remoteId, 
 
       <div className="pt-4 space-y-3">
         <div className="flex gap-2">
-          <button onClick={generateAiReply} disabled={isAiLoading} className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-900 text-slate-400 rounded-2xl border border-slate-800 text-[10px] font-black uppercase tracking-widest hover:text-indigo-400 disabled:opacity-50">
-            {isAiLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} className="text-indigo-500" />} AI Assist
-          </button>
-          <button onClick={() => fileInputRef.current?.click()} className="px-5 py-3 bg-slate-900 text-slate-400 rounded-2xl border border-slate-800 hover:text-indigo-400">
-            <Paperclip size={18} />
+          <button 
+            onClick={() => fileInputRef.current?.click()} 
+            disabled={isProcessingFile}
+            className="w-full flex items-center justify-center gap-2 py-3 bg-slate-900 text-slate-400 rounded-2xl border border-slate-800 text-[10px] font-black uppercase tracking-widest hover:text-indigo-400 disabled:opacity-50 transition-all active:scale-95"
+          >
+            <Paperclip size={14} /> {isProcessingFile ? 'Processing...' : 'Attach Resource'}
           </button>
         </div>
         <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
         <form onSubmit={handleSubmit} className="relative">
-          <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Secure message..." className="w-full bg-slate-900 border-2 border-slate-800 rounded-3xl pl-5 pr-16 py-4 text-sm text-slate-100 focus:outline-none focus:border-indigo-500/50 transition-all" />
-          <button type="submit" disabled={!input.trim()} className={`absolute right-2 top-2 bottom-2 aspect-square flex items-center justify-center ${mode === 'direct' ? 'bg-emerald-600' : 'bg-indigo-600'} text-white rounded-2xl active:scale-95 disabled:opacity-20`}>
+          <input 
+            type="text" 
+            value={input} 
+            onChange={(e) => setInput(e.target.value)} 
+            placeholder="Secure message..." 
+            className="w-full bg-slate-900 border-2 border-slate-800 rounded-3xl pl-5 pr-16 py-4 text-sm text-slate-100 focus:outline-none focus:border-indigo-500/50 transition-all" 
+          />
+          <button 
+            type="submit" 
+            disabled={!input.trim()} 
+            className={`absolute right-2 top-2 bottom-2 aspect-square flex items-center justify-center ${mode === 'direct' ? 'bg-emerald-600' : 'bg-indigo-600'} text-white rounded-2xl active:scale-95 disabled:opacity-20 transition-all`}
+          >
             <Send size={18} />
           </button>
         </form>
