@@ -1,13 +1,11 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>P2P Beam - Global Secure Messaging</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>P2P Beam - Secure Direct Messaging</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    // Global shim for compatibility with libraries expecting 'process'
     window.process = { env: { NODE_ENV: 'production' } };
   </script>
   <script type="importmap">
@@ -22,30 +20,39 @@
     "qrcode.react": "https://esm.sh/qrcode.react@4.1.0?external=react",
     "peerjs": "https://esm.sh/peerjs@1.5.4",
     "html5-qrcode": "https://esm.sh/html5-qrcode@2.3.8",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/"
   }
 }
 </script>
   <style>
-    body { background-color: #000; margin: 0; padding: 0; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
-    #root { min-height: 100vh; }
-    /* Fix for script error UI masking */
-    .error-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.9);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-      padding: 2rem;
-      text-align: center;
+    :root { --sat: env(safe-area-inset-top); --sab: env(safe-area-inset-bottom); }
+    body { 
+      background-color: #020617; 
+      margin: 0; 
+      padding: 0; 
+      color: #f8fafc; 
+      font-family: system-ui, -apple-system, sans-serif;
+      height: 100dvh;
+      overflow: hidden;
     }
-    @keyframes scan {
+    #root { height: 100dvh; display: flex; flex-direction: column; }
+    
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+
+    @keyframes scan-line {
       0% { transform: translateY(0); opacity: 0; }
       50% { opacity: 1; }
-      100% { transform: translateY(220px); opacity: 0; }
+      100% { transform: translateY(240px); opacity: 0; }
+    }
+    
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
     }
   </style>
 </head>
