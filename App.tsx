@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Peer, DataConnection } from 'peerjs';
 import { AppState, Message, MessageType, Conversation, BeamMode } from './types';
@@ -6,7 +5,7 @@ import Header from './components/Header';
 import QRGenerator from './components/QRGenerator';
 import QRScanner from './components/QRScanner';
 import ChatRoom from './components/ChatRoom';
-import { Scan, AlertTriangle, Wifi, MessageSquare, Trash2, Lock, Radio, Users, Loader2 } from 'lucide-react';
+import { Scan, AlertTriangle, Wifi, MessageSquare, Trash2, Lock, Radio, Users, Loader2, Shield } from 'lucide-react';
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.HOME);
@@ -35,7 +34,14 @@ const App: React.FC = () => {
           next.set(roomId, {
             peerId: roomId,
             name: mode === 'group' ? (IAmHost ? 'Group Channel' : 'Secure Group') : 'Direct Tunnel',
-            messages: [],
+            messages: [{
+              id: 'sys-' + Date.now(),
+              senderId: 'system',
+              senderName: 'System',
+              content: `Encrypted ${mode} tunnel established.`,
+              timestamp: Date.now(),
+              type: 'system'
+            }],
             participants: [c.peer],
             lastActivity: Date.now(),
             isHost: IAmHost,
@@ -44,7 +50,19 @@ const App: React.FC = () => {
         } else if (mode === 'group') {
           const conv = next.get(roomId) as Conversation;
           if (!conv.participants.includes(c.peer)) {
-            next.set(roomId, { ...conv, participants: [...conv.participants, c.peer], lastActivity: Date.now() });
+            next.set(roomId, { 
+              ...conv, 
+              participants: [...conv.participants, c.peer], 
+              messages: [...conv.messages, {
+                id: 'sys-' + Date.now(),
+                senderId: 'system',
+                senderName: 'System',
+                content: 'A new peer has joined the beam.',
+                timestamp: Date.now(),
+                type: 'system'
+              }],
+              lastActivity: Date.now() 
+            });
           }
         }
         return next;
@@ -61,6 +79,7 @@ const App: React.FC = () => {
       if (data.type === 'message') {
         const incomingMsg = data.payload;
         
+        // Host relays messages in group mode
         if (IAmHost && mode === 'group') {
           connectionsRef.current.forEach(({ conn, mode: connMode }) => {
             if (conn.peer !== c.peer && conn.open && connMode === 'group') {
@@ -86,29 +105,47 @@ const App: React.FC = () => {
     };
 
     c.on('close', closeHandler);
-    c.on('error', closeHandler);
+    c.on('error', (err) => {
+      console.error("Connection Error:", err);
+      closeHandler();
+    });
   }, []);
 
   const initPeer = useCallback(() => {
-    if (peerRef.current && !peerRef.current.destroyed) return peerRef.current;
+    if (peerRef.current && !peerRef.current.destroyed && !peerRef.current.disconnected) {
+      return peerRef.current;
+    }
     
     const newPeer = new Peer({
       debug: 1,
-      config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] }
+      config: { 
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' }, 
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' }
+        ] 
+      }
     });
     
     peerRef.current = newPeer;
     
-    newPeer.on('open', (id) => { setPeerId(id); setIsServerOnline(true); });
+    newPeer.on('open', (id) => { 
+      setPeerId(id); 
+      setIsServerOnline(true); 
+    });
+    
     newPeer.on('connection', (c) => {
       const incomingMode = (c.metadata?.mode as BeamMode) || 'direct';
       setupConnection(c, true, incomingMode);
     });
+
     newPeer.on('disconnected', () => {
       setIsServerOnline(false);
-      setTimeout(() => peerRef.current?.reconnect(), 3000);
+      setTimeout(() => peerRef.current?.reconnect(), 2000);
     });
+
     newPeer.on('error', (err) => {
+      console.error("Peer Error:", err.type);
       if (err.type === 'peer-unavailable') {
         setError("Beam Target is offline.");
         setIsConnecting(false);
@@ -128,23 +165,31 @@ const App: React.FC = () => {
     }
     
     setIsConnecting(true);
+    setError(null);
     const p = initPeer();
-    const c = p.connect(remoteId, { reliable: true, metadata: { mode } });
+    
+    // Safety check for peer availability
+    const c = p.connect(remoteId, { 
+      reliable: true, 
+      metadata: { mode } 
+    });
     setupConnection(c, false, mode);
 
-    setTimeout(() => {
+    const timeout = setTimeout(() => {
       if (isConnecting) {
         setIsConnecting(false);
-        setError("Connection attempt timed out.");
+        setError("Connection timeout. Peer might be behind a strict firewall.");
       }
-    }, 12000);
+    }, 15000);
+
+    return () => clearTimeout(timeout);
   }, [initPeer, setupConnection, isConnecting]);
 
   const handleSendMessage = useCallback((content: string, type: MessageType = 'text', fileName?: string, fileSize?: string) => {
     if (!activePeerId || !peerId) return;
 
     const newMessage: Message = {
-      id: crypto.randomUUID(),
+      id: (Math.random() * 1e18).toString(36),
       senderId: peerId,
       senderName: 'Me',
       content,
@@ -169,7 +214,13 @@ const App: React.FC = () => {
       });
     } else {
       const entry = connectionsRef.current.get(activePeerId);
-      if (entry?.conn.open) entry.conn.send({ type: 'message', payload: newMessage });
+      if (entry?.conn.open) {
+        entry.conn.send({ type: 'message', payload: newMessage });
+      } else if (activeConv?.mode === 'group' && !activeConv?.isHost) {
+        // Guests in group mode send to host, who is mapped to activePeerId
+        const hostEntry = connectionsRef.current.get(activePeerId);
+        if (hostEntry?.conn.open) hostEntry.conn.send({ type: 'message', payload: newMessage });
+      }
     }
   }, [activePeerId, activeConv, peerId]);
 
@@ -202,17 +253,17 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-200 font-sans selection:bg-indigo-500/30">
-      <div className="max-w-md mx-auto px-6 flex flex-col min-h-screen">
+    <div className="flex-1 flex flex-col bg-[#020617] relative overflow-hidden">
+      <div className="max-w-md mx-auto w-full px-4 flex flex-col h-full">
         <Header onBack={appState !== AppState.HOME ? () => setAppState(AppState.HOME) : undefined} />
         
         {error && (
-          <div className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-between">
+          <div className="mt-4 p-4 glass-panel border border-red-500/30 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-4">
             <div className="flex items-center gap-3">
               <AlertTriangle className="text-red-500" size={18} />
-              <span className="text-[10px] font-black text-red-200 uppercase tracking-tight">{error}</span>
+              <span className="text-[10px] font-black text-red-100 uppercase tracking-tight">{error}</span>
             </div>
-            <button onClick={() => setError(null)} className="text-red-500/50 hover:text-red-500 uppercase text-[9px] font-black">Close</button>
+            <button onClick={() => setError(null)} className="text-red-500/50 hover:text-red-400 uppercase text-[9px] font-black">Dismiss</button>
           </div>
         )}
 
@@ -229,54 +280,57 @@ const App: React.FC = () => {
         ) : appState === AppState.SCANNING ? (
           <QRScanner onScan={connectToPeer} onCancel={() => setAppState(AppState.HOME)} isConnecting={isConnecting} />
         ) : (
-          <div className="flex-1 flex flex-col py-6 gap-8 animate-in fade-in duration-700">
+          <div className="flex-1 flex flex-col py-6 gap-6 animate-in fade-in duration-500 overflow-hidden">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                  <h1 className="text-4xl font-black text-white tracking-tighter italic uppercase">Beam Hub</h1>
                  {isServerOnline ? <Wifi size={16} className="text-emerald-500 animate-pulse" /> : <Loader2 size={16} className="text-slate-600 animate-spin" />}
               </div>
-              <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">Direct P2P • No Backend • No AI</p>
+              <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">P2P • Encrypted • No Backend</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => { setSelectedMode('direct'); setAppState(AppState.HOSTING); }} className="group bg-slate-900 border border-slate-800 p-6 rounded-[2.5rem] flex flex-col items-center gap-3 hover:border-emerald-500/50 active:scale-95 transition-all">
-                <div className="bg-emerald-500/10 p-4 rounded-2xl text-emerald-500 group-hover:scale-110 transition-transform"><Lock size={28} /></div>
+              <button onClick={() => { setSelectedMode('direct'); setAppState(AppState.HOSTING); }} className="group glass-panel p-6 rounded-[2.5rem] flex flex-col items-center gap-3 hover:border-emerald-500/50 active:scale-95 transition-all">
+                <div className="bg-emerald-500/10 p-4 rounded-2xl text-emerald-500 group-hover:scale-110 transition-transform shadow-lg shadow-emerald-500/5"><Lock size={28} /></div>
                 <span className="text-[10px] font-black uppercase tracking-widest text-white text-center">Private Tunnel</span>
               </button>
-              <button onClick={() => { setSelectedMode('group'); setAppState(AppState.HOSTING); }} className="group bg-slate-900 border border-slate-800 p-6 rounded-[2.5rem] flex flex-col items-center gap-3 hover:border-indigo-500/50 active:scale-95 transition-all">
-                <div className="bg-indigo-500/10 p-4 rounded-2xl text-indigo-500 group-hover:scale-110 transition-transform"><Radio size={28} /></div>
+              <button onClick={() => { setSelectedMode('group'); setAppState(AppState.HOSTING); }} className="group glass-panel p-6 rounded-[2.5rem] flex flex-col items-center gap-3 hover:border-indigo-500/50 active:scale-95 transition-all">
+                <div className="bg-indigo-500/10 p-4 rounded-2xl text-indigo-500 group-hover:scale-110 transition-transform shadow-lg shadow-indigo-500/5"><Radio size={28} /></div>
                 <span className="text-[10px] font-black uppercase tracking-widest text-white text-center">Group Relay</span>
               </button>
             </div>
 
-            <div className="space-y-3">
-              <h2 className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">Active Tunnels</h2>
-              {conversations.size === 0 ? (
-                <div className="py-12 bg-slate-900/20 border-2 border-dashed border-slate-800/50 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 text-slate-800">
-                  <MessageSquare size={32} />
-                  <p className="text-[9px] font-black uppercase tracking-widest text-center">Scan to begin direct transfer</p>
-                </div>
-              ) : (
-                (Array.from(conversations.values()) as Conversation[])
-                  .sort((a, b) => b.lastActivity - a.lastActivity)
-                  .map((conv) => (
-                    <div key={conv.peerId} className="group relative">
-                      <button onClick={() => { setActivePeerId(conv.peerId); setAppState(AppState.CHAT); }} className="w-full bg-slate-900/50 hover:bg-slate-900 border border-slate-800 p-5 rounded-3xl flex items-center gap-4 transition-all active:scale-[0.98]">
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${conv.mode === 'group' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                          {conv.mode === 'group' ? <Users size={22} /> : <Lock size={22} />}
-                        </div>
-                        <div className="flex-1 text-left">
-                          <div className="text-sm font-black text-white">{conv.name}</div>
-                          <div className="text-[9px] text-slate-500 font-bold uppercase tracking-tight">{conv.mode === 'group' ? `${conv.participants.length} Active Peers` : 'Secured 1:1 Connection'}</div>
-                        </div>
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); removeConversation(conv.peerId); }} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-slate-700 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
-                    </div>
-                  ))
-              )}
+            <div className="flex-1 flex flex-col min-h-0 space-y-3">
+              <h2 className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">Active Beams</h2>
+              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pb-4">
+                {conversations.size === 0 ? (
+                  <div className="h-32 glass-panel border-dashed border-slate-800/50 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 text-slate-800">
+                    <Shield size={24} className="opacity-20" />
+                    <p className="text-[9px] font-black uppercase tracking-widest text-center opacity-40 px-6 leading-relaxed">No active tunnels. Host or Scan to begin data transfer.</p>
+                  </div>
+                ) : (
+                  // Fix: Explicitly type conversations array to resolve 'unknown' type inference issues
+                  Array.from(conversations.values())
+                    .sort((a: Conversation, b: Conversation) => b.lastActivity - a.lastActivity)
+                    .map((conv: Conversation) => (
+                      <div key={conv.peerId} className="group relative">
+                        <button onClick={() => { setActivePeerId(conv.peerId); setAppState(AppState.CHAT); }} className="w-full glass-panel p-5 rounded-3xl flex items-center gap-4 transition-all active:scale-[0.98] hover:bg-slate-900/40">
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${conv.mode === 'group' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-emerald-500/20 text-emerald-400'} border border-white/5`}>
+                            {conv.mode === 'group' ? <Users size={22} /> : <Lock size={22} />}
+                          </div>
+                          <div className="flex-1 text-left">
+                            <div className="text-sm font-black text-white">{conv.name}</div>
+                            <div className="text-[9px] text-slate-500 font-bold uppercase tracking-tight">{conv.mode === 'group' ? `${conv.participants.length} Active Peers` : 'Secured 1:1 Connection'}</div>
+                          </div>
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); removeConversation(conv.peerId); }} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-slate-700 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
+                      </div>
+                    ))
+                )}
+              </div>
             </div>
 
-            <button onClick={() => setAppState(AppState.SCANNING)} className="mt-auto w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 shadow-xl shadow-indigo-600/30 active:scale-95 transition-all">
+            <button onClick={() => setAppState(AppState.SCANNING)} className="mb-6 w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 shadow-2xl shadow-indigo-600/30 active:scale-95 transition-all">
               <Scan size={20} />
               Scan to Connect
             </button>
