@@ -1,6 +1,6 @@
 {
   "name": "BEAM P2P - Secure Hub",
-  "description": "Serverless, decentralized peer-to-peer encrypted messaging using WebRTC. Direct device-to-device tunnels with zero server footprint.",
+  "description": "A high-performance, 100% serverless P2P messaging platform. No AI, no backend servers, and zero data tracking. Direct device-to-device encryption via WebRTC.",
   "requestFramePermissions": [
     "camera"
   ]

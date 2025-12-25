@@ -34,7 +34,7 @@ const App: React.FC = () => {
         if (!next.has(roomId)) {
           next.set(roomId, {
             peerId: roomId,
-            name: mode === 'group' ? (IAmHost ? 'My Group Beam' : 'Secure Group') : 'Direct Tunnel',
+            name: mode === 'group' ? (IAmHost ? 'Group Channel' : 'Secure Group') : 'Direct Tunnel',
             messages: [],
             participants: [c.peer],
             lastActivity: Date.now(),
@@ -61,7 +61,6 @@ const App: React.FC = () => {
       if (data.type === 'message') {
         const incomingMsg = data.payload;
         
-        // Host-side relay logic for groups
         if (IAmHost && mode === 'group') {
           connectionsRef.current.forEach(({ conn, mode: connMode }) => {
             if (conn.peer !== c.peer && conn.open && connMode === 'group') {
@@ -84,7 +83,6 @@ const App: React.FC = () => {
 
     const closeHandler = () => {
       connectionsRef.current.delete(c.peer);
-      // Optional: Update conversation status to "disconnected"
     };
 
     c.on('close', closeHandler);
@@ -131,7 +129,6 @@ const App: React.FC = () => {
     
     setIsConnecting(true);
     const p = initPeer();
-    // Handshake via metadata
     const c = p.connect(remoteId, { reliable: true, metadata: { mode } });
     setupConnection(c, false, mode);
 
@@ -238,26 +235,26 @@ const App: React.FC = () => {
                  <h1 className="text-4xl font-black text-white tracking-tighter italic uppercase">Beam Hub</h1>
                  {isServerOnline ? <Wifi size={16} className="text-emerald-500 animate-pulse" /> : <Loader2 size={16} className="text-slate-600 animate-spin" />}
               </div>
-              <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">Private Device Relay</p>
+              <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">Direct P2P • No Backend • No AI</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <button onClick={() => { setSelectedMode('direct'); setAppState(AppState.HOSTING); }} className="group bg-slate-900 border border-slate-800 p-6 rounded-[2.5rem] flex flex-col items-center gap-3 hover:border-emerald-500/50 active:scale-95 transition-all">
                 <div className="bg-emerald-500/10 p-4 rounded-2xl text-emerald-500 group-hover:scale-110 transition-transform"><Lock size={28} /></div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-white">Private Tunnel</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-white text-center">Private Tunnel</span>
               </button>
               <button onClick={() => { setSelectedMode('group'); setAppState(AppState.HOSTING); }} className="group bg-slate-900 border border-slate-800 p-6 rounded-[2.5rem] flex flex-col items-center gap-3 hover:border-indigo-500/50 active:scale-95 transition-all">
                 <div className="bg-indigo-500/10 p-4 rounded-2xl text-indigo-500 group-hover:scale-110 transition-transform"><Radio size={28} /></div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-white">Group Beam</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-white text-center">Group Relay</span>
               </button>
             </div>
 
             <div className="space-y-3">
-              <h2 className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">Recent Sessions</h2>
+              <h2 className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">Active Tunnels</h2>
               {conversations.size === 0 ? (
                 <div className="py-12 bg-slate-900/20 border-2 border-dashed border-slate-800/50 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 text-slate-800">
                   <MessageSquare size={32} />
-                  <p className="text-[9px] font-black uppercase tracking-widest text-center">No Active Tunnels</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-center">Scan to begin direct transfer</p>
                 </div>
               ) : (
                 (Array.from(conversations.values()) as Conversation[])
@@ -270,7 +267,7 @@ const App: React.FC = () => {
                         </div>
                         <div className="flex-1 text-left">
                           <div className="text-sm font-black text-white">{conv.name}</div>
-                          <div className="text-[9px] text-slate-500 font-bold uppercase tracking-tight">{conv.mode === 'group' ? `${conv.participants.length} Active` : 'Encrypted Pairing'}</div>
+                          <div className="text-[9px] text-slate-500 font-bold uppercase tracking-tight">{conv.mode === 'group' ? `${conv.participants.length} Active Peers` : 'Secured 1:1 Connection'}</div>
                         </div>
                       </button>
                       <button onClick={(e) => { e.stopPropagation(); removeConversation(conv.peerId); }} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-slate-700 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
@@ -281,7 +278,7 @@ const App: React.FC = () => {
 
             <button onClick={() => setAppState(AppState.SCANNING)} className="mt-auto w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 shadow-xl shadow-indigo-600/30 active:scale-95 transition-all">
               <Scan size={20} />
-              Pair Device
+              Scan to Connect
             </button>
           </div>
         )}
