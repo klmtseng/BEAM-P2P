@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Message, MessageType, BeamMode } from '../types';
-import { Send, Zap, Paperclip, Download, File as FileIcon, Users, Lock, ShieldCheck, ShieldAlert, MessageSquare } from 'lucide-react';
+import { Send, Zap, Paperclip, Download, File as FileIcon, Users, Lock, ShieldCheck, ShieldAlert, MessageSquare, Smartphone, Info } from 'lucide-react';
 
 interface ChatRoomProps {
   messages: Message[];
@@ -13,6 +13,7 @@ interface ChatRoomProps {
 const ChatRoom: React.FC<ChatRoomProps> = ({ messages, onSendMessage, remoteId, participantCount = 1, mode }) => {
   const [input, setInput] = useState('');
   const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [isSmsMode, setIsSmsMode] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -25,23 +26,40 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ messages, onSendMessage, remoteId, 
     }
   }, [messages]);
 
+  // Utility to detect iOS including iPads on Desktop Mode
+  const isIOSDevice = () => {
+    return (
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    );
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim()) { 
+    if (!input.trim()) return;
+
+    if (isSmsMode) {
+      // SMS Transmission Logic
+      const separator = isIOSDevice() ? '&' : '?';
+      const encodedBody = encodeURIComponent(input.trim());
+      
+      // Trigger native SMS app
+      window.location.href = `sms:${separator}body=${encodedBody}`;
+      
+      // We clear the input as the action is handed off to the system app
+      setInput('');
+    } else {
+      // Standard WebRTC Transmission
       onSendMessage(input.trim(), 'text'); 
       setInput(''); 
     }
   };
 
+  // Fallback button logic
   const handleSMSFallback = () => {
     if (!input.trim()) return;
-    
-    // iOS uses '&' for body separator, Android uses '?'
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const separator = isIOS ? '&' : '?';
+    const separator = isIOSDevice() ? '&' : '?';
     const encodedBody = encodeURIComponent(input.trim());
-    
-    // Tries to open SMS app with the current text body
     window.location.href = `sms:${separator}body=${encodedBody}`;
   };
 
@@ -69,21 +87,39 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ messages, onSendMessage, remoteId, 
   return (
     <div className="flex-1 flex flex-col min-h-0 py-2">
       {/* Status Bar */}
-      <div className={`px-4 py-3 glass-panel rounded-[2rem] flex items-center justify-between border ${mode === 'direct' ? 'border-emerald-500/20' : 'border-indigo-500/20'} mb-4 shadow-xl`}>
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-2xl ${mode === 'direct' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-indigo-500/10 text-indigo-400'} flex items-center justify-center border border-white/5`}>
-            {mode === 'direct' ? <Lock size={20} /> : <Users size={20} />}
+      <div className={`px-4 py-3 glass-panel rounded-[2rem] flex flex-col gap-3 border ${mode === 'direct' ? 'border-emerald-500/20' : 'border-indigo-500/20'} mb-4 shadow-xl`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-2xl ${mode === 'direct' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-indigo-500/10 text-indigo-400'} flex items-center justify-center border border-white/5`}>
+              {mode === 'direct' ? <Lock size={20} /> : <Users size={20} />}
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs font-black text-white uppercase tracking-wider">{mode === 'direct' ? 'Private' : 'Group'} Beam</span>
+              <span className={`text-[9px] font-bold ${mode === 'direct' ? 'text-emerald-400' : 'text-indigo-400'} uppercase tracking-tighter`}>
+                {mode === 'direct' ? 'Active Tunnel' : `${participantCount} Peers Joined`}
+              </span>
+            </div>
           </div>
-          <div className="flex flex-col">
-            <span className="text-xs font-black text-white uppercase tracking-wider">{mode === 'direct' ? 'Private' : 'Group'} Beam</span>
-            <span className={`text-[9px] font-bold ${mode === 'direct' ? 'text-emerald-400' : 'text-indigo-400'} uppercase tracking-tighter`}>
-              {mode === 'direct' ? 'Active Tunnel' : `${participantCount} Peers Joined`}
-            </span>
+          <div className="flex items-center gap-1 px-3 py-1 bg-black/20 rounded-full border border-white/5">
+            <ShieldCheck size={10} className="text-emerald-500" />
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">P2P Secure</span>
           </div>
         </div>
-        <div className="flex items-center gap-1 px-3 py-1 bg-black/20 rounded-full border border-white/5">
-          <ShieldCheck size={10} className="text-emerald-500" />
-          <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">P2P Secure</span>
+
+        {/* Transmission Mode Toggle */}
+        <div className="flex bg-slate-900/50 p-1 rounded-xl border border-white/5 relative">
+          <button 
+            onClick={() => setIsSmsMode(false)}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${!isSmsMode ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            <Zap size={12} /> Data
+          </button>
+          <button 
+            onClick={() => setIsSmsMode(true)}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${isSmsMode ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            <Smartphone size={12} /> SMS
+          </button>
         </div>
       </div>
 
@@ -91,8 +127,10 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ messages, onSendMessage, remoteId, 
       <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar pb-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-slate-800 gap-2 opacity-20">
-            <Zap size={48} />
-            <p className="text-[10px] font-black uppercase tracking-[0.3em]">Direct Data Stream Open</p>
+            {isSmsMode ? <Smartphone size={48} /> : <Zap size={48} />}
+            <p className="text-[10px] font-black uppercase tracking-[0.3em]">
+              {isSmsMode ? 'SMS Route Selected' : 'Direct Data Stream Open'}
+            </p>
           </div>
         ) : messages.map((msg) => {
           if (msg.type === 'system') {
@@ -138,15 +176,26 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ messages, onSendMessage, remoteId, 
 
       {/* Input Area */}
       <div className="pt-2 pb-6 space-y-3">
+        {isSmsMode && (
+          <div className="flex items-center gap-2 justify-center pb-2 animate-in fade-in">
+             <Info size={12} className="text-emerald-500" />
+             <p className="text-[9px] text-emerald-500/80 font-bold uppercase tracking-widest">
+               Messages will open in SMS App
+             </p>
+          </div>
+        )}
+        
         <div className="flex gap-2">
           <button 
             onClick={() => fileInputRef.current?.click()} 
-            disabled={isProcessingFile}
-            className="flex-1 flex items-center justify-center gap-2 py-3 glass-panel text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:text-indigo-400 disabled:opacity-50 transition-all active:scale-95 shadow-lg"
+            disabled={isProcessingFile || isSmsMode}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 glass-panel rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all active:scale-95 shadow-lg ${isSmsMode ? 'opacity-30 cursor-not-allowed text-slate-600' : 'text-slate-400 hover:text-indigo-400'}`}
           >
             <Paperclip size={14} /> Share File
           </button>
-          {input.trim() && (
+          
+          {/* Quick Fallback button */}
+          {!isSmsMode && input.trim() && (
              <button 
                onClick={handleSMSFallback}
                className="px-4 glass-panel text-slate-400 hover:text-green-400 rounded-2xl transition-all active:scale-95"
@@ -163,15 +212,15 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ messages, onSendMessage, remoteId, 
             type="text" 
             value={input} 
             onChange={(e) => setInput(e.target.value)} 
-            placeholder="Write data..." 
-            className="w-full bg-slate-900/80 border-2 border-slate-800/50 rounded-3xl pl-5 pr-14 py-4 text-sm text-slate-100 focus:outline-none focus:border-indigo-500/50 transition-all shadow-xl placeholder:text-slate-700" 
+            placeholder={isSmsMode ? "Type SMS message..." : "Write data..."}
+            className={`w-full bg-slate-900/80 border-2 rounded-3xl pl-5 pr-14 py-4 text-sm text-slate-100 focus:outline-none transition-all shadow-xl placeholder:text-slate-700 ${isSmsMode ? 'border-emerald-900/50 focus:border-emerald-500/50' : 'border-slate-800/50 focus:border-indigo-500/50'}`}
           />
           <button 
             type="submit" 
             disabled={!input.trim()} 
-            className={`absolute right-2 top-2 bottom-2 aspect-square flex items-center justify-center ${mode === 'direct' ? 'bg-emerald-600' : 'bg-indigo-600'} text-white rounded-2xl active:scale-95 disabled:opacity-10 transition-all shadow-lg shadow-black/40`}
+            className={`absolute right-2 top-2 bottom-2 aspect-square flex items-center justify-center text-white rounded-2xl active:scale-95 disabled:opacity-10 transition-all shadow-lg shadow-black/40 ${isSmsMode ? 'bg-emerald-600' : (mode === 'direct' ? 'bg-emerald-600' : 'bg-indigo-600')}`}
           >
-            <Send size={18} />
+            {isSmsMode ? <Smartphone size={18} /> : <Send size={18} />}
           </button>
         </form>
       </div>

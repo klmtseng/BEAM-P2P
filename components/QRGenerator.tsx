@@ -46,8 +46,10 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ peerId, mode }) => {
     const message = `Join my secure Beam tunnel (${mode}): ${joinUrl}`;
     const encodedBody = encodeURIComponent(message);
     
-    // iOS uses '&' for body separator, Android uses '?'
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    // Check for iOS including iPads on Desktop Mode
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    
     const separator = isIOS ? '&' : '?';
     
     window.location.href = `sms:${separator}body=${encodedBody}`;
