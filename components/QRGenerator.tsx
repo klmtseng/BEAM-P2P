@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Copy, Check, Loader2, Globe, Share2, Info, Lock, Users } from 'lucide-react';
+import { Copy, Check, Loader2, Share2, Lock, Users, MessageSquare } from 'lucide-react';
 import { BeamMode } from '../types';
 
 interface QRGeneratorProps {
@@ -25,6 +24,33 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ peerId, mode }) => {
     navigator.clipboard.writeText(joinUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Join Beam Tunnel',
+          text: `Connect to my secure ${mode} beam:`,
+          url: joinUrl,
+        });
+      } catch (err) {
+        console.error('Share failed:', err);
+      }
+    } else {
+      handleCopyLink();
+    }
+  };
+
+  const handleSMSInvite = () => {
+    const message = `Join my secure Beam tunnel (${mode}): ${joinUrl}`;
+    const encodedBody = encodeURIComponent(message);
+    
+    // iOS uses '&' for body separator, Android uses '?'
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const separator = isIOS ? '&' : '?';
+    
+    window.location.href = `sms:${separator}body=${encodedBody}`;
   };
 
   if (!peerId) {
@@ -73,10 +99,16 @@ const QRGenerator: React.FC<QRGeneratorProps> = ({ peerId, mode }) => {
           </div>
         </div>
 
-        <button onClick={handleCopyLink} className={`w-full py-4 ${mode === 'direct' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-indigo-600 hover:bg-indigo-500'} text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95`}>
-          <Share2 size={18} />
-          Invite via Link
-        </button>
+        <div className="grid grid-cols-2 gap-3">
+          <button onClick={handleSMSInvite} className="py-4 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 border border-slate-700">
+            <MessageSquare size={16} />
+            SMS Invite
+          </button>
+          <button onClick={handleShare} className={`py-4 ${mode === 'direct' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-indigo-600 hover:bg-indigo-500'} text-white rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95`}>
+            <Share2 size={16} />
+            Share Link
+          </button>
+        </div>
       </div>
     </div>
   );

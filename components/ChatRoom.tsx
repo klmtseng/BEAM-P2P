@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Message, MessageType, BeamMode } from '../types';
-import { Send, Zap, Paperclip, Download, File as FileIcon, Users, Lock, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Send, Zap, Paperclip, Download, File as FileIcon, Users, Lock, ShieldCheck, ShieldAlert, MessageSquare } from 'lucide-react';
 
 interface ChatRoomProps {
   messages: Message[];
@@ -31,6 +31,18 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ messages, onSendMessage, remoteId, 
       onSendMessage(input.trim(), 'text'); 
       setInput(''); 
     }
+  };
+
+  const handleSMSFallback = () => {
+    if (!input.trim()) return;
+    
+    // iOS uses '&' for body separator, Android uses '?'
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const separator = isIOS ? '&' : '?';
+    const encodedBody = encodeURIComponent(input.trim());
+    
+    // Tries to open SMS app with the current text body
+    window.location.href = `sms:${separator}body=${encodedBody}`;
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -126,20 +138,32 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ messages, onSendMessage, remoteId, 
 
       {/* Input Area */}
       <div className="pt-2 pb-6 space-y-3">
-        <button 
-          onClick={() => fileInputRef.current?.click()} 
-          disabled={isProcessingFile}
-          className="w-full flex items-center justify-center gap-2 py-3.5 glass-panel text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:text-indigo-400 disabled:opacity-50 transition-all active:scale-95 shadow-2xl"
-        >
-          <Paperclip size={14} /> {isProcessingFile ? 'Syncing...' : 'Share File / Media'}
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => fileInputRef.current?.click()} 
+            disabled={isProcessingFile}
+            className="flex-1 flex items-center justify-center gap-2 py-3 glass-panel text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:text-indigo-400 disabled:opacity-50 transition-all active:scale-95 shadow-lg"
+          >
+            <Paperclip size={14} /> Share File
+          </button>
+          {input.trim() && (
+             <button 
+               onClick={handleSMSFallback}
+               className="px-4 glass-panel text-slate-400 hover:text-green-400 rounded-2xl transition-all active:scale-95"
+               title="Send via SMS (Fallback)"
+             >
+               <MessageSquare size={16} />
+             </button>
+          )}
+        </div>
+        
         <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
         <form onSubmit={handleSubmit} className="relative">
           <input 
             type="text" 
             value={input} 
             onChange={(e) => setInput(e.target.value)} 
-            placeholder="Write data directly..." 
+            placeholder="Write data..." 
             className="w-full bg-slate-900/80 border-2 border-slate-800/50 rounded-3xl pl-5 pr-14 py-4 text-sm text-slate-100 focus:outline-none focus:border-indigo-500/50 transition-all shadow-xl placeholder:text-slate-700" 
           />
           <button 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Zap, Globe, Cpu, Github } from 'lucide-react';
+import { Shield, Zap, Globe, Cpu, Github, MessageSquare } from 'lucide-react';
 
 interface InfoPanelProps {
   className?: string;
@@ -35,30 +35,30 @@ const InfoPanel: React.FC<InfoPanelProps> = ({ className = '', onClose }) => {
             <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
               <span className="text-xs font-bold text-indigo-400 block mb-1">STEP 01</span>
               <p className="text-sm text-slate-200 font-medium mb-1">Initialize Host</p>
-              <p className="text-xs text-slate-400">Open BEAM on Device A and select "Private Tunnel" or "Group Relay".</p>
+              <p className="text-xs text-slate-400">Open BEAM on Device A. Use "SMS Invite" to send the link to a friend.</p>
               <div className="mt-2 pt-2 border-t border-white/5">
                 <p className="text-sm text-slate-200 font-medium mb-1">建立主機</p>
-                <p className="text-xs text-slate-400">在裝置 A 開啟 BEAM，選擇「私人通道」或「群組中繼」。</p>
+                <p className="text-xs text-slate-400">開啟 BEAM，可使用「SMS Invite」將連結透過簡訊傳送給朋友。</p>
               </div>
             </div>
 
             <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
               <span className="text-xs font-bold text-emerald-400 block mb-1">STEP 02</span>
               <p className="text-sm text-slate-200 font-medium mb-1">Connect Peer</p>
-              <p className="text-xs text-slate-400">Open BEAM on Device B, click "Scan", and scan the QR code from Device A.</p>
+              <p className="text-xs text-slate-400">Open BEAM on Device B, click "Scan", or click the SMS link received.</p>
               <div className="mt-2 pt-2 border-t border-white/5">
                 <p className="text-sm text-slate-200 font-medium mb-1">連接裝置</p>
-                <p className="text-xs text-slate-400">在裝置 B 開啟 BEAM，點擊「掃描」，並掃描裝置 A 上的 QR Code。</p>
+                <p className="text-xs text-slate-400">點擊「掃描」或直接點擊收到的簡訊連結即可加入。</p>
               </div>
             </div>
 
             <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
               <span className="text-xs font-bold text-pink-400 block mb-1">STEP 03</span>
-              <p className="text-sm text-slate-200 font-medium mb-1">Secure Chat</p>
-              <p className="text-xs text-slate-400">Once connected, the tunnel is established. Messages and files are encrypted.</p>
+              <p className="text-sm text-slate-200 font-medium mb-1">Secure Chat & SMS Fallback</p>
+              <p className="text-xs text-slate-400">Tunnel is encrypted. If offline, use the SMS icon to send text via carrier.</p>
               <div className="mt-2 pt-2 border-t border-white/5">
-                <p className="text-sm text-slate-200 font-medium mb-1">安全傳輸</p>
-                <p className="text-xs text-slate-400">連線成功後通道即建立。所有訊息與檔案皆經過加密傳輸。</p>
+                <p className="text-sm text-slate-200 font-medium mb-1">安全傳輸與簡訊備援</p>
+                <p className="text-xs text-slate-400">通道為加密狀態。若對方離線，可點擊 SMS 圖示改用手機簡訊發送。</p>
               </div>
             </div>
           </div>
@@ -74,19 +74,16 @@ const InfoPanel: React.FC<InfoPanelProps> = ({ className = '', onClose }) => {
             <li className="flex gap-3 text-xs text-slate-400 leading-relaxed">
               <Globe size={16} className="shrink-0 text-indigo-500" />
               <span>
-                <strong className="text-slate-200">WebRTC (Web Real-Time Communication):</strong><br/>
-                Enables direct browser-to-browser communication without an intermediary server storing data.
-                <br/>
-                允許瀏覽器之間直接進行通訊，無需中間伺服器儲存資料。
+                <strong className="text-slate-200">WebRTC:</strong> Direct browser-to-browser data tunnel.<br/>
+                瀏覽器間直接的資料通道。
               </span>
             </li>
             <li className="flex gap-3 text-xs text-slate-400 leading-relaxed">
-              <Shield size={16} className="shrink-0 text-indigo-500" />
+              <MessageSquare size={16} className="shrink-0 text-indigo-500" />
               <span>
-                <strong className="text-slate-200">Ephemeral Keys (短暫金鑰):</strong><br/>
-                Peer IDs are generated locally and randomly. Once the tab is closed, the identity is destroyed forever.
-                <br/>
-                Peer ID 皆為本地隨機生成。一旦關閉分頁，該身份即永久銷毀。
+                <strong className="text-slate-200">SMS URI Scheme:</strong><br/>
+                Uses `sms:` protocol to invoke native messaging apps for invitations or offline fallback.<br/>
+                利用 `sms:` 協議喚起原生簡訊 App 進行邀請或離線傳訊。
               </span>
             </li>
           </ul>
