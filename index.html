@@ -5,26 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>P2P Beam - Secure Direct Messaging</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    window.process = { env: { NODE_ENV: 'production' } };
-  </script>
-  <script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@19.0.0",
-    "react-dom": "https://esm.sh/react-dom@19.0.0",
-    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
-    "react/jsx-runtime": "https://esm.sh/react@19.0.0/jsx-runtime",
-    "scheduler": "https://esm.sh/scheduler@0.25.0",
-    "lucide-react": "https://esm.sh/lucide-react@0.460.0?external=react",
-    "qrcode.react": "https://esm.sh/qrcode.react@4.1.0?external=react",
-    "peerjs": "https://esm.sh/peerjs@1.5.4",
-    "html5-qrcode": "https://esm.sh/html5-qrcode@2.3.8",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/"
-  }
-}
-</script>
   <style>
     :root { --sat: env(safe-area-inset-top); --sab: env(safe-area-inset-bottom); }
     body { 
@@ -66,6 +46,21 @@
       padding: 1.5rem;
     }
   </style>
+<script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "qrcode.react": "https://esm.sh/qrcode.react@^4.2.0",
+    "peerjs": "https://esm.sh/peerjs@^1.5.5",
+    "html5-qrcode": "https://esm.sh/html5-qrcode@^2.3.8"
+  }
+}
+</script>
 </head>
 <body>
   <div id="root"></div>
