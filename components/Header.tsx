@@ -1,14 +1,14 @@
-
 import React from 'react';
-import { ArrowLeft, Zap, Shield } from 'lucide-react';
+import { ArrowLeft, Zap, Shield, Info } from 'lucide-react';
 
 interface HeaderProps {
   onBack?: () => void;
+  onToggleInfo?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onBack }) => {
+const Header: React.FC<HeaderProps> = ({ onBack, onToggleInfo }) => {
   return (
-    <header className="flex items-center justify-between py-4 border-b border-slate-800/50">
+    <header className="flex items-center justify-between py-4 border-b border-slate-800/50 shrink-0">
       <div className="flex items-center gap-2">
         {onBack && (
           <button 
@@ -25,9 +25,22 @@ const Header: React.FC<HeaderProps> = ({ onBack }) => {
           <span className="bg-gradient-to-br from-white to-slate-500 bg-clip-text text-transparent italic font-black">BEAM</span>
         </div>
       </div>
-      <div className="flex items-center gap-2 px-3 py-1 bg-slate-900 rounded-full border border-slate-800">
-        <Shield size={12} className="text-emerald-500" />
-        <span className="text-[9px] font-black text-slate-400 tracking-widest uppercase">Incognito</span>
+      
+      <div className="flex items-center gap-3">
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-slate-900 rounded-full border border-slate-800">
+          <Shield size={12} className="text-emerald-500" />
+          <span className="text-[9px] font-black text-slate-400 tracking-widest uppercase">Incognito</span>
+        </div>
+        
+        {onToggleInfo && (
+          <button 
+            onClick={onToggleInfo}
+            className="md:hidden p-2 bg-slate-800/50 hover:bg-slate-800 rounded-full text-slate-400 transition-colors"
+            aria-label="App Info"
+          >
+            <Info size={18} />
+          </button>
+        )}
       </div>
     </header>
   );

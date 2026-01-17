@@ -5,7 +5,8 @@ import Header from './components/Header';
 import QRGenerator from './components/QRGenerator';
 import QRScanner from './components/QRScanner';
 import ChatRoom from './components/ChatRoom';
-import { Scan, AlertTriangle, Wifi, MessageSquare, Trash2, Lock, Radio, Users, Loader2, Shield } from 'lucide-react';
+import InfoPanel from './components/InfoPanel';
+import { Scan, AlertTriangle, Wifi, Lock, Radio, Users, Loader2, Shield, Trash2 } from 'lucide-react';
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.HOME);
@@ -16,6 +17,7 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isServerOnline, setIsServerOnline] = useState(false);
+  const [showInfoMobile, setShowInfoMobile] = useState(false);
   
   const peerRef = useRef<Peer | null>(null);
   const connectionsRef = useRef<Map<string, { conn: DataConnection, mode: BeamMode }>>(new Map());
@@ -116,6 +118,8 @@ const App: React.FC = () => {
       return peerRef.current;
     }
     
+    // PeerJS uses a public cloud server by default to broker the connection (signaling).
+    // No data passes through it, only connection metadata.
     const newPeer = new Peer({
       debug: 1,
       config: { 
@@ -141,7 +145,10 @@ const App: React.FC = () => {
 
     newPeer.on('disconnected', () => {
       setIsServerOnline(false);
-      setTimeout(() => peerRef.current?.reconnect(), 2000);
+      // Attempt reconnect if ID is preserved
+      if (!newPeer.destroyed) {
+         setTimeout(() => newPeer.reconnect(), 2000);
+      }
     });
 
     newPeer.on('error', (err) => {
@@ -253,89 +260,108 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#020617] relative overflow-hidden">
-      <div className="max-w-md mx-auto w-full px-4 flex flex-col h-full">
-        <Header onBack={appState !== AppState.HOME ? () => setAppState(AppState.HOME) : undefined} />
+    <div className="flex h-[100dvh] bg-[#020617] text-slate-100 overflow-hidden">
+      
+      {/* Desktop Info Panel (Sidebar) */}
+      <div className="hidden md:block w-96 border-r border-white/5 h-full relative z-10">
+        <InfoPanel />
+      </div>
+
+      {/* Main Application Area */}
+      <div className="flex-1 flex flex-col relative w-full h-full max-w-md mx-auto md:max-w-none md:mx-0">
         
-        {error && (
-          <div className="mt-4 p-4 glass-panel border border-red-500/30 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-4">
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="text-red-500" size={18} />
-              <span className="text-[10px] font-black text-red-100 uppercase tracking-tight">{error}</span>
-            </div>
-            <button onClick={() => setError(null)} className="text-red-500/50 hover:text-red-400 uppercase text-[9px] font-black">Dismiss</button>
+        {/* Mobile Info Modal */}
+        {showInfoMobile && (
+          <div className="absolute inset-0 z-50 md:hidden animate-in slide-in-from-left duration-300">
+            <InfoPanel onClose={() => setShowInfoMobile(false)} className="bg-[#020617]" />
           </div>
         )}
 
-        {appState === AppState.CHAT && activeConv ? (
-          <ChatRoom 
-            messages={activeConv.messages} 
-            onSendMessage={handleSendMessage} 
-            remoteId={activeConv.peerId}
-            participantCount={activeConv.participants.length}
-            mode={activeConv.mode}
+        <div className="max-w-md mx-auto w-full flex flex-col h-full px-4 md:px-0 md:max-w-xl md:border-x md:border-white/5 bg-[#020617]">
+          <Header 
+            onBack={appState !== AppState.HOME ? () => setAppState(AppState.HOME) : undefined} 
+            onToggleInfo={() => setShowInfoMobile(true)}
           />
-        ) : appState === AppState.HOSTING ? (
-          <QRGenerator peerId={peerId} mode={selectedMode} />
-        ) : appState === AppState.SCANNING ? (
-          <QRScanner onScan={connectToPeer} onCancel={() => setAppState(AppState.HOME)} isConnecting={isConnecting} />
-        ) : (
-          <div className="flex-1 flex flex-col py-6 gap-6 animate-in fade-in duration-500 overflow-hidden">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                 <h1 className="text-4xl font-black text-white tracking-tighter italic uppercase">Beam Hub</h1>
-                 {isServerOnline ? <Wifi size={16} className="text-emerald-500 animate-pulse" /> : <Loader2 size={16} className="text-slate-600 animate-spin" />}
+          
+          {error && (
+            <div className="mt-4 mx-4 md:mx-0 p-4 glass-panel border border-red-500/30 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-4">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="text-red-500" size={18} />
+                <span className="text-[10px] font-black text-red-100 uppercase tracking-tight">{error}</span>
               </div>
-              <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">P2P • Encrypted • No Backend</p>
+              <button onClick={() => setError(null)} className="text-red-500/50 hover:text-red-400 uppercase text-[9px] font-black">Dismiss</button>
             </div>
+          )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => { setSelectedMode('direct'); setAppState(AppState.HOSTING); }} className="group glass-panel p-6 rounded-[2.5rem] flex flex-col items-center gap-3 hover:border-emerald-500/50 active:scale-95 transition-all">
-                <div className="bg-emerald-500/10 p-4 rounded-2xl text-emerald-500 group-hover:scale-110 transition-transform shadow-lg shadow-emerald-500/5"><Lock size={28} /></div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-white text-center">Private Tunnel</span>
-              </button>
-              <button onClick={() => { setSelectedMode('group'); setAppState(AppState.HOSTING); }} className="group glass-panel p-6 rounded-[2.5rem] flex flex-col items-center gap-3 hover:border-indigo-500/50 active:scale-95 transition-all">
-                <div className="bg-indigo-500/10 p-4 rounded-2xl text-indigo-500 group-hover:scale-110 transition-transform shadow-lg shadow-indigo-500/5"><Radio size={28} /></div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-white text-center">Group Relay</span>
-              </button>
-            </div>
-
-            <div className="flex-1 flex flex-col min-h-0 space-y-3">
-              <h2 className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">Active Beams</h2>
-              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pb-4">
-                {conversations.size === 0 ? (
-                  <div className="h-32 glass-panel border-dashed border-slate-800/50 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 text-slate-800">
-                    <Shield size={24} className="opacity-20" />
-                    <p className="text-[9px] font-black uppercase tracking-widest text-center opacity-40 px-6 leading-relaxed">No active tunnels. Host or Scan to begin data transfer.</p>
-                  </div>
-                ) : (
-                  // Fix: Explicitly type conversations array to resolve 'unknown' type inference issues
-                  Array.from(conversations.values())
-                    .sort((a: Conversation, b: Conversation) => b.lastActivity - a.lastActivity)
-                    .map((conv: Conversation) => (
-                      <div key={conv.peerId} className="group relative">
-                        <button onClick={() => { setActivePeerId(conv.peerId); setAppState(AppState.CHAT); }} className="w-full glass-panel p-5 rounded-3xl flex items-center gap-4 transition-all active:scale-[0.98] hover:bg-slate-900/40">
-                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${conv.mode === 'group' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-emerald-500/20 text-emerald-400'} border border-white/5`}>
-                            {conv.mode === 'group' ? <Users size={22} /> : <Lock size={22} />}
-                          </div>
-                          <div className="flex-1 text-left">
-                            <div className="text-sm font-black text-white">{conv.name}</div>
-                            <div className="text-[9px] text-slate-500 font-bold uppercase tracking-tight">{conv.mode === 'group' ? `${conv.participants.length} Active Peers` : 'Secured 1:1 Connection'}</div>
-                          </div>
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); removeConversation(conv.peerId); }} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-slate-700 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
-                      </div>
-                    ))
-                )}
+          {appState === AppState.CHAT && activeConv ? (
+            <ChatRoom 
+              messages={activeConv.messages} 
+              onSendMessage={handleSendMessage} 
+              remoteId={activeConv.peerId}
+              participantCount={activeConv.participants.length}
+              mode={activeConv.mode}
+            />
+          ) : appState === AppState.HOSTING ? (
+            <QRGenerator peerId={peerId} mode={selectedMode} />
+          ) : appState === AppState.SCANNING ? (
+            <QRScanner onScan={connectToPeer} onCancel={() => setAppState(AppState.HOME)} isConnecting={isConnecting} />
+          ) : (
+            <div className="flex-1 flex flex-col py-6 gap-6 animate-in fade-in duration-500 overflow-hidden px-1 md:px-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                   <h1 className="text-4xl font-black text-white tracking-tighter italic uppercase">Beam Hub</h1>
+                   {isServerOnline ? <Wifi size={16} className="text-emerald-500 animate-pulse" /> : <Loader2 size={16} className="text-slate-600 animate-spin" />}
+                </div>
+                <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">P2P • Encrypted • No Backend</p>
               </div>
-            </div>
 
-            <button onClick={() => setAppState(AppState.SCANNING)} className="mb-6 w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 shadow-2xl shadow-indigo-600/30 active:scale-95 transition-all">
-              <Scan size={20} />
-              Scan to Connect
-            </button>
-          </div>
-        )}
+              <div className="grid grid-cols-2 gap-4">
+                <button onClick={() => { setSelectedMode('direct'); setAppState(AppState.HOSTING); }} className="group glass-panel p-6 rounded-[2.5rem] flex flex-col items-center gap-3 hover:border-emerald-500/50 active:scale-95 transition-all">
+                  <div className="bg-emerald-500/10 p-4 rounded-2xl text-emerald-500 group-hover:scale-110 transition-transform shadow-lg shadow-emerald-500/5"><Lock size={28} /></div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white text-center">Private Tunnel</span>
+                </button>
+                <button onClick={() => { setSelectedMode('group'); setAppState(AppState.HOSTING); }} className="group glass-panel p-6 rounded-[2.5rem] flex flex-col items-center gap-3 hover:border-indigo-500/50 active:scale-95 transition-all">
+                  <div className="bg-indigo-500/10 p-4 rounded-2xl text-indigo-500 group-hover:scale-110 transition-transform shadow-lg shadow-indigo-500/5"><Radio size={28} /></div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white text-center">Group Relay</span>
+                </button>
+              </div>
+
+              <div className="flex-1 flex flex-col min-h-0 space-y-3">
+                <h2 className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">Active Beams</h2>
+                <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pb-4">
+                  {conversations.size === 0 ? (
+                    <div className="h-32 glass-panel border-dashed border-slate-800/50 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 text-slate-800">
+                      <Shield size={24} className="opacity-20" />
+                      <p className="text-[9px] font-black uppercase tracking-widest text-center opacity-40 px-6 leading-relaxed">No active tunnels. Host or Scan to begin data transfer.</p>
+                    </div>
+                  ) : (
+                    Array.from(conversations.values())
+                      .sort((a: Conversation, b: Conversation) => b.lastActivity - a.lastActivity)
+                      .map((conv: Conversation) => (
+                        <div key={conv.peerId} className="group relative">
+                          <button onClick={() => { setActivePeerId(conv.peerId); setAppState(AppState.CHAT); }} className="w-full glass-panel p-5 rounded-3xl flex items-center gap-4 transition-all active:scale-[0.98] hover:bg-slate-900/40">
+                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${conv.mode === 'group' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-emerald-500/20 text-emerald-400'} border border-white/5`}>
+                              {conv.mode === 'group' ? <Users size={22} /> : <Lock size={22} />}
+                            </div>
+                            <div className="flex-1 text-left">
+                              <div className="text-sm font-black text-white">{conv.name}</div>
+                              <div className="text-[9px] text-slate-500 font-bold uppercase tracking-tight">{conv.mode === 'group' ? `${conv.participants.length} Active Peers` : 'Secured 1:1 Connection'}</div>
+                            </div>
+                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); removeConversation(conv.peerId); }} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-slate-700 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </div>
+
+              <button onClick={() => setAppState(AppState.SCANNING)} className="mb-6 w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 shadow-2xl shadow-indigo-600/30 active:scale-95 transition-all">
+                <Scan size={20} />
+                Scan to Connect
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
